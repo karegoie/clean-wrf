@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 
 use rayon::prelude::*;
-use std::sync::{Arc, Mutex, MutexGuard};
+
 use ndarray::{Array, Array1, s, Array2};
 use rustfft::{FftPlanner, num_complex::Complex};
 use rustfft::num_complex::ComplexFloat;
@@ -91,17 +91,18 @@ fn cwt_perform(f: &Array1<f64>, para: &HashMap<&str, &str>) -> Array2<f64> {
     result_2d
 }
 
+
 pub fn cwt(sig_seqs: Vec<Array1<f64>>, para: &HashMap<&str, &str>) -> Array2<f64> {
-    let mut cwt_result : MutexGuard<Vec<Array2<f64>>> = Arc::new(Mutex::new(Vec::new())).lock().unwrap();
-    sig_seqs.par_iter().for_each(|sig_seq| {
-        let result = cwt_perform(sig_seq, para);
-        let mut cwt_result = cwt_result.lock().unwrap();
-        cwt_result.push(result);
-    });
-    let mut mean_result = Array2::zeros(cwt_result[0].dim());
-    for result in cwt_result.iter() {
-        mean_result = mean_result + result;
+    let cwt_results: Vec<Array2<f64>> = sig_seqs.par_iter()
+        .map(|sig_seq| cwt_perform(sig_seq, para))
+        .collect();
+
+    let mut cwt_result = Array2::<f64>::zeros(
+        (para["num"].parse::<usize>().unwrap(), sig_seqs[0].len()));
+
+    for result in cwt_results {
+        cwt_result += result;
     }
-    mean_result = mean_result / (cwt_result.len() as f64);
-    mean_result
+
+    cwt_result / 4.0
 }
