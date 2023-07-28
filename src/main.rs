@@ -1,6 +1,7 @@
 use bio::io::fastq;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
+use bio::io::fastq::Record;
 
 fn main() {
     let binding = std::env::args().nth(1).unwrap();
@@ -21,13 +22,12 @@ fn main() {
     let reader = std::io::BufReader::new(file);
     let one_writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
     let mut writer = Arc::new(Mutex::new(one_writer));
+    let fastq_reader = fastq::Reader::new(reader).collect::<Vec<Record>>();
 
     // parallelize for loop above with rayon
-    fastq::Reader::new(reader)
-        .records()
+    fastq_reader
         .par_iter()
         .for_each(|record| {
-        let record = record.unwrap();
         if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
             return;
         }
