@@ -22,7 +22,7 @@ fn main() {
     let reader = std::io::BufReader::new(file);
     let one_writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
     let mut writer = Arc::new(Mutex::new(one_writer));
-    let fastq_reader = fastq::Reader::new(reader).records().collect::<Vec<Record>>();
+    let fastq_reader = fastq::Reader::new(reader).records().map(|x| x.unwrap()).collect::<Vec<Record>>();
 
     // parallelize for loop above with rayon
     fastq_reader
