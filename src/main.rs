@@ -19,7 +19,12 @@ fn main() {
     let reader = std::io::BufReader::new(file);
     // check whether the file is fasta or fastq
     let mut writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
+    let mut cnt = 0;
     for record in fastq::Reader::new(reader).records() {
+        cnt += 1;
+        if cnt % 10000 == 0 {
+            println!("{} reads processed", cnt);
+        }
         let record = record.unwrap();
         if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
             continue;
