@@ -21,7 +21,7 @@ fn main() {
     let reader = std::io::BufReader::new(file);
     let mut writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
 
-    let mut records = reader.records();
+    let mut records = fastq::Reader::new(reader).records();
     let mut cnt = 0;
 
     rayon::join(
