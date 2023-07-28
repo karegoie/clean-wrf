@@ -1,7 +1,9 @@
 use bio::io::fastq;
 
 fn main() {
-    let target: &str = std::env::args().nth(1).unwrap().as_str();
+    let binding = std::env::args().nth(1).unwrap();
+    let target: &str = binding.as_str();
+
     let mut params = std::collections::HashMap::new();
     params.insert("file", target);
     params.insert("edge", "20");
