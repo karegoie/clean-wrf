@@ -1,12 +1,12 @@
 use bio::io::fastq;
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 fn main() {
     let binding = std::env::args().nth(1).unwrap();
     let target: &str = binding.as_str();
 
-    let mut params = HashMap::new();
+    let mut params = std::collections::HashMap::new();
     params.insert("file", target);
     params.insert("edge", "40");
     params.insert("init_wave", "100");
@@ -19,38 +19,25 @@ fn main() {
     let path = std::path::Path::new(params.get("file").unwrap());
     let file = std::fs::File::open(path).unwrap();
     let reader = std::io::BufReader::new(file);
-    let mut writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
+    let one_writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
+    let mut writer = Arc::new(Mutex::new(one_writer));
 
-    let mut records = fastq::Reader::new(reader).records();
-    let mut cnt = 0;
+    // parallelize for loop above with rayon
+    fastq::Reader::new(reader)
+        .records()
+        .par_iter()
+        .for_each(|record| {
+        let record = record.unwrap();
+        if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
+            return;
+        }
+        let seq = record.seq().to_vec();
+        let sig_seq = clean_wrf::tosignal::convert_to_signal(&seq);
+        let cwt_seq = clean_wrf::cwt::cwt(sig_seq, &params);
+        if clean_wrf::filter::linear_argmax(&cwt_seq, &params) {
+            let mut writer = writer.lock().unwrap();
+            writer.write_record(&record).unwrap();
+        }
+    });
 
-    rayon::join(
-        || {
-            for record in records.by_ref() {
-                cnt += 1;
-                if cnt % 10000 == 0 {
-                    println!("{} reads processed", cnt);
-                }
-                let record = record.unwrap();
-                if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
-                    continue;
-                }
-                let seq = record.seq().to_vec();
-                let sig_seq = clean_wrf::tosignal::convert_to_signal(&seq);
-                let cwt_seq = clean_wrf::cwt::cwt(sig_seq, &params);
-                if clean_wrf::filter::linear_argmax(&cwt_seq, &params) {
-                    writer.write_record(&record).unwrap();
-                }
-            }
-        },
-        || {
-            let mut results = Vec::new();
-            for record in records.by_ref() {
-                results.push(clean_wrf::filter::linear_argmax(&record.unwrap().cwt_seq, &params));
-            }
-            results
-        },
-    );
-
-    println!("Done");
 }
