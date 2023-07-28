@@ -12,7 +12,7 @@ fn main() {
     params.insert("to", "1200");
     params.insert("num", "50");
     params.insert("tolerance", "4");
-
+    params.insert("min_read_length", "500");
 
     let path = std::path::Path::new(params.get("file").unwrap());
     let file = std::fs::File::open(path).unwrap();
@@ -21,6 +21,9 @@ fn main() {
     let mut writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
     for record in fastq::Reader::new(reader).records() {
         let record = record.unwrap();
+        if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
+            continue;
+        }
         let seq = record.seq().to_vec();
 
         let sig_seq = clean_wrf::tosignal::convert_to_signal(&seq);
