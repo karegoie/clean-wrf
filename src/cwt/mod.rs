@@ -93,10 +93,10 @@ fn cwt_perform(f: &Array1<f64>, para: &HashMap<&str, &str>) -> Array2<f64> {
 pub fn cwt(sig_seqs: Vec<Array1<f64>>, para: &HashMap<&str, &str>) -> Array2<f64> {
     let mut cwt_result = Array2::<f64>::zeros(
         (para["num"].parse::<usize>().unwrap(), sig_seqs[0].len()));
-    for sig_seq in sig_seqs.iter() {
+    sig_seqs.par_iter().enumerate().for_each(|(i, sig_seq)| {
         let result = cwt_perform(sig_seq, para);
-        //cwt_result += result;
-        cwt_result = cwt_result + result;
-    }
+        // cwt_result = cwt_result + result;
+        cwt_result.slice_mut(s![.., ..]).zip_mut_with(&result, |x, &y| *x += y);
+    });
     cwt_result / 4.0
 }
