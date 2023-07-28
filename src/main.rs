@@ -8,9 +8,9 @@ fn main() {
     params.insert("init_wave", "100");
     params.insert("from", "60");
     params.insert("to", "600");
-    params.insert("num", "50");
+    params.insert("num", "25");
     params.insert("tolerance", "4");
-    params.insert("min_read_length", "1000");
+    params.insert("min_read_length", "10000");
     let path = std::path::Path::new(params.get("file").unwrap());
     let file = std::fs::File::open(path).unwrap();
     let reader = std::io::BufReader::new(file);
