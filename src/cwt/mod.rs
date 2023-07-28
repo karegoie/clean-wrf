@@ -95,7 +95,8 @@ pub fn cwt(sig_seqs: Vec<Array1<f64>>, para: &HashMap<&str, &str>) -> Array2<f64
         (para["num"].parse::<usize>().unwrap(), sig_seqs[0].len()));
     for sig_seq in sig_seqs.iter() {
         let result = cwt_perform(sig_seq, para);
-        cwt_result += result;
+        //cwt_result += result;
+        cwt_result = cwt_result + result;
     }
     cwt_result / 4.0
 }
