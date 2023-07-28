@@ -101,7 +101,7 @@ pub fn cwt(sig_seqs: Vec<Array1<f64>>, para: &HashMap<&str, &str>) -> Array2<f64
         (para["num"].parse::<usize>().unwrap(), sig_seqs[0].len()));
 
     for result in cwt_results {
-        cwt_result += result;
+        cwt_result = cwt_result + result;
     }
 
     cwt_result / 4.0
