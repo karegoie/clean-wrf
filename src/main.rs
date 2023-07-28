@@ -1,12 +1,7 @@
 use bio::io::fastq;
-use rayon::prelude::*;
-use std::sync::{Arc, Mutex};
-use bio::io::fastq::Record;
-
 fn main() {
     let binding = std::env::args().nth(1).unwrap();
     let target: &str = binding.as_str();
-
     let mut params = std::collections::HashMap::new();
     params.insert("file", target);
     params.insert("edge", "40");
@@ -16,28 +11,26 @@ fn main() {
     params.insert("num", "50");
     params.insert("tolerance", "4");
     params.insert("min_read_length", "1000");
-
     let path = std::path::Path::new(params.get("file").unwrap());
     let file = std::fs::File::open(path).unwrap();
     let reader = std::io::BufReader::new(file);
-    let one_writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
-    let mut writer = Arc::new(Mutex::new(one_writer));
-    let fastq_reader = fastq::Reader::new(reader).records().map(|x| x.unwrap()).collect::<Vec<Record>>();
-
-    // parallelize for loop above with rayon
-    fastq_reader
-        .par_iter()
-        .for_each(|record| {
+    // check whether the file is fasta or fastq
+    let mut writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
+    let mut cnt = 0;
+    for record in fastq::Reader::new(reader).records() {
+        cnt += 1;
+        if cnt % 100 == 0 {
+            println!("{} reads processed", cnt);
+        }
+        let record = record.unwrap();
         if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
-            return;
+            continue;
         }
         let seq = record.seq().to_vec();
         let sig_seq = clean_wrf::tosignal::convert_to_signal(&seq);
         let cwt_seq = clean_wrf::cwt::cwt(sig_seq, &params);
         if clean_wrf::filter::linear_argmax(&cwt_seq, &params) {
-            let mut writer = writer.lock().unwrap();
             writer.write_record(&record).unwrap();
         }
-    });
-
+    }
 }
