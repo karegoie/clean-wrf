@@ -19,6 +19,7 @@ fn main() {
     let mut writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
     for record in fastq::Reader::new(reader).records() {
         let record = record.unwrap();
+        let seq = record.seq().to_vec();
 
         let sig_seq = clean_wrf::tosignal::convert_to_signal(&seq);
         let cwt_seq = clean_wrf::cwt::cwt(sig_seq, &params);
