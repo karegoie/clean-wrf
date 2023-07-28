@@ -6,13 +6,13 @@ fn main() {
 
     let mut params = std::collections::HashMap::new();
     params.insert("file", target);
-    params.insert("edge", "20");
+    params.insert("edge", "40");
     params.insert("init_wave", "100");
-    params.insert("from", "10");
-    params.insert("to", "1200");
+    params.insert("from", "60");
+    params.insert("to", "600");
     params.insert("num", "50");
     params.insert("tolerance", "4");
-    params.insert("min_read_length", "500");
+    params.insert("min_read_length", "1000");
 
     let path = std::path::Path::new(params.get("file").unwrap());
     let file = std::fs::File::open(path).unwrap();
