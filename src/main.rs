@@ -1,12 +1,12 @@
 use bio::io::fastq;
-use std::sync::{Arc, Mutex};
 use rayon::prelude::*;
+use std::collections::HashMap;
 
 fn main() {
     let binding = std::env::args().nth(1).unwrap();
     let target: &str = binding.as_str();
 
-    let mut params = std::collections::HashMap::new();
+    let mut params = HashMap::new();
     params.insert("file", target);
     params.insert("edge", "40");
     params.insert("init_wave", "100");
@@ -19,32 +19,38 @@ fn main() {
     let path = std::path::Path::new(params.get("file").unwrap());
     let file = std::fs::File::open(path).unwrap();
     let reader = std::io::BufReader::new(file);
-    // check whether the file is fasta or fastq
-    let one_writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
-    let writer = Arc::new(Mutex::new(one_writer));
+    let mut writer = fastq::Writer::to_file("./result/filtered.fastq").unwrap();
 
-    // Parallelize the loop using Rayon's par_iter.
-    fastq::Reader::new(reader)
-        .records()
-        .par_iter()  // Use par_iter() to parallelize the iterator.
-        .enumerate()
-        .for_each(|(cnt, record)| {
-            let record = record.unwrap();
-            if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
-                return;
-            }
-            let seq = record.seq().to_vec();
-            let sig_seq = clean_wrf::tosignal::convert_to_signal(&seq);
-            let cwt_seq = clean_wrf::cwt::cwt(sig_seq, &params);
+    let mut records = reader.records();
+    let mut cnt = 0;
 
-            if clean_wrf::filter::linear_argmax(&cwt_seq, &params) {
-                // Lock the writer before writing to it.
-                let mut writer_lock = writer.lock().unwrap();
-                writer_lock.write_record(&record).unwrap();
+    rayon::join(
+        || {
+            for record in records.by_ref() {
+                cnt += 1;
+                if cnt % 10000 == 0 {
+                    println!("{} reads processed", cnt);
+                }
+                let record = record.unwrap();
+                if record.seq().len() < params["min_read_length"].parse::<usize>().unwrap() {
+                    continue;
+                }
+                let seq = record.seq().to_vec();
+                let sig_seq = clean_wrf::tosignal::convert_to_signal(&seq);
+                let cwt_seq = clean_wrf::cwt::cwt(sig_seq, &params);
+                if clean_wrf::filter::linear_argmax(&cwt_seq, &params) {
+                    writer.write_record(&record).unwrap();
+                }
             }
+        },
+        || {
+            let mut results = Vec::new();
+            for record in records.by_ref() {
+                results.push(clean_wrf::filter::linear_argmax(&record.unwrap().cwt_seq, &params));
+            }
+            results
+        },
+    );
 
-            if cnt % 10000 == 0 {
-                println!("{} reads processed", cnt);
-            }
-        });
+    println!("Done");
 }
